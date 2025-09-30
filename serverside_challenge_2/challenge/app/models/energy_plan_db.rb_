@@ -1,0 +1,56 @@
+# app/models/energy_plan_db.rb
+class EnergyPlanDb < ApplicationRecord
+  # このクラスは DB の energy_plans テーブルと対応
+  self.table_name = 'energy_plans'
+
+  # 関連テーブルの設定
+  has_many :basic_fees, foreign_key: :energy_plan_id
+  has_many :unit_fees, foreign_key: :energy_plan_id
+
+  # DB からプラン情報を取得するクラスメソッド
+  # YAML版 EnergyPlan の load_plans と同じ呼び出し形式に統一
+  def self.load_plans
+    EnergyPlanDb.includes(:basic_fees, :unit_fees)  # 関連テーブルを一括取得（N+1対策）
+                .where(active: true)               # 利用可能なプランのみ取得
+                .map do |plan|
+      plan  # ハッシュではなく ActiveRecord オブジェクトとして返す
+    end
+  end
+
+  # YAML版 EnergyPlan と同じ名前・引数で料金計算
+  # 引数:
+  #   ampere: 契約アンペア
+  #   usage_kwh: 1ヶ月の使用量(kWh)
+  # 戻り値: 計算された料金（円）または例外時は -1
+  def calculate_fee(ampere, usage_kwh)
+    begin
+      # 契約アンペアに対応する基本料金を取得（active=true のみ）
+      basic = basic_fees.find_by(ampere: ampere, active: true)
+      return -1 unless basic  # 契約アンペアが未登録の場合は -1 を返す
+
+      fee = basic.price.to_f  # 基本料金
+      usage_fee = 0.0         # 従量料金初期化
+
+      # 従量料金の計算（区間ごと）
+      unit_fees.where(active: true).each do |uf|
+        min_kwh = uf.min_kwh.to_f   # 区間下限
+        max_kwh = uf.max_kwh.to_f   # 区間上限
+        max_kwh = Float::INFINITY if max_kwh.zero?  # 上限が0の場合は無制限
+
+        if usage_kwh > min_kwh
+          # 区間内での使用量を計算
+          kwh = [usage_kwh, max_kwh].min - min_kwh
+          usage_fee += kwh * uf.price.to_f  # 従量料金を加算
+        end
+      end
+
+      # 基本料金 + 従量料金を合計して小数点2桁に丸める
+      (fee + usage_fee).round(2)
+
+    rescue => e
+      # 例外が発生した場合はログに記録し -1 を返す
+      Rails.logger.error("Error calculating fee for EnergyPlanDb: #{e.message}")
+      -1
+    end
+  end
+end
