@@ -21,8 +21,8 @@ RUN bundle install --jobs 4 --retry 3
 COPY . .
 
 # PID ファイル削除してサーバー起動
-CMD ["sh", "-c", "rm -f tmp/pids/server.pid && RAILS_ENV=production bin/rails server -b 0.0.0.0 -p 8080"]
-
+#CMD ["sh", "-c", "rm -f tmp/pids/server.pid && RAILS_ENV=production bin/rails server -b 0.0.0.0 -p 8080"]
+CMD ["bin/rails", "server", "-b", "0.0.0.0", "-p", "3000"]
 
 
 #FROM ruby:3.1.2

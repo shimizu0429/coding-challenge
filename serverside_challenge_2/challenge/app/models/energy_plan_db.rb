@@ -18,10 +18,17 @@ class EnergyPlanDb < ApplicationRecord
 
   # 契約アンペアと使用量から料金計算
   def calculate_fee(ampere, usage_kwh)
-    # 契約アンペアに対応する基本料金を取得
+	#使用量チェック
+    if usage_kwh <= 0 || usage_kwh >= MAX_USAGE_KWH
+      return { error: true, message: "使用量が異常値です" }
+    end
+	# 契約アンペアに対応する基本料金を取得
     fee_record = basic_fees.find { |bf| bf.ampere == ampere.to_i }
-    # 該当する基本料金がなければ異常値として -1 を返す
-    return -1 unless fee_record
+	#アンペアチェック
+    unless fee_record
+      return { error: true, message: "対応する基本料金が見つかりません" }
+    end
+
     # 見つかった基本料金の金額を取得（float に変換）
     fee = fee_record.price.to_f
 
@@ -47,6 +54,7 @@ class EnergyPlanDb < ApplicationRecord
     (fee + usage_fee).round(2)
   rescue => e
     Rails.logger.error("Error calculating fee: #{e.message}")
-    -1
+    #例外発生時のエラー
+    { error: true, message: "料金計算中にエラーが発生しました" }
   end
 end

@@ -1,4 +1,4 @@
-class ApiController < ApplicationController
+class ElectricityApiController < ApplicationController
 def get_price
 
 	#リクエストパラメータから契約アンペア数と使用量を取得
@@ -14,14 +14,21 @@ def get_price
 		fee = plan.calculate_fee(ampere, usage_kwh)
 		
 		next if fee.nil? # 対象外のアンペア数はスキップ
+
 		
 		#返却用データを組み立て
-		{
-		  provider_name: plan.provider_name,
-		  plan_name: plan.plan_name,
-		  price: fee
-		}
-		
+		#{
+		#  provider_name: plan.provider_name,
+		#  plan_name: plan.plan_name,
+		#  price: fee
+		#}
+		#エラーの場合メッセージを返却
+	    {
+	      provider_name: plan.provider_name,
+	      plan_name: plan.plan_name,
+	      price: fee.is_a?(Hash) ? ERROR_NO : fee,
+	      message: fee.is_a?(Hash) ? fee[:message] : nil
+	    }.compact		
 	end.compact
 	
 	#JSON 形式で結果を返す
@@ -45,11 +52,18 @@ def get_price_db
 		next if fee.nil? # 対象外のアンペア数はスキップ
 		
 		#返却用データを組み立て
-		{
-		  provider_name: plan.provider_name,
-		  plan_name: plan.plan_name,
-		  price: fee
-		}
+		#{
+		#  provider_name: plan.provider_name,
+		#  plan_name: plan.plan_name,
+		#  price: fee
+		#}
+		#エラーの場合メッセージを返却
+	    {
+	      provider_name: plan.provider_name,
+	      plan_name: plan.plan_name,
+	      price: fee.is_a?(Hash) ? ERROR_NO : fee,
+	      message: fee.is_a?(Hash) ? fee[:message] : nil
+	    }.compact		
 		
 	end.compact
 	
@@ -57,8 +71,4 @@ def get_price_db
 	render json: { results: result }
 end
 
-def test1
-	render json: { message: "API test successful" }
-end
-  
 end

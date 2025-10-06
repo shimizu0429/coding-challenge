@@ -22,10 +22,19 @@ class EnergyPlan
 
   #契約アンペアと使用量から料金計算
   def calculate_fee(ampere, usage_kwh)
+	
+	#使用量チェック
+    if usage_kwh <= 0 || usage_kwh >= MAX_USAGE_KWH
+      return { error: true, message: "使用量が異常値です" }
+    end
+
   	# 基本料金を取得（対象外なら -1）
     fee = basic_fee[ampere.to_i]
-    return -1 unless fee # 契約アンペア未定義の場合
-
+    #アンペアチェック
+    unless fee
+      return { error: true, message: "対応する基本料金が見つかりません" }
+    end
+    
     usage_fee = 0.0
 	
 	#使用量に応じて従量料金を加算
@@ -50,6 +59,7 @@ class EnergyPlan
   rescue => e
   	# 計算中に例外が起きた場合はログ出力して -1 を返す
     Rails.logger.error("Error calculating fee: #{e.message}")
-    -1
+    #例外発生時のエラー
+    { error: true, message: "料金計算中にエラーが発生しました" }
   end
 end
